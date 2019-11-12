@@ -39,7 +39,6 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.apache.zookeeper.KeeperException.NodeExistsException;
 import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.data.Stat;
 
 import java.nio.charset.Charset;
 import java.util.Collections;
@@ -110,14 +109,6 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
         try {
             client.create().withMode(CreateMode.EPHEMERAL).forPath(path);
         } catch (NodeExistsException e) {
-            try {
-                if (!checkEphemeralBelongToCurrentSession(path)) {
-                    deletePath(path);
-                    createEphemeral(path);
-                }
-            }catch (Exception e1) {
-                throw new IllegalStateException(e.getMessage(), e1);
-            }
         } catch (Exception e) {
             throw new IllegalStateException(e.getMessage(), e);
         }
@@ -146,12 +137,7 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
             client.create().withMode(CreateMode.EPHEMERAL).forPath(path, dataBytes);
         } catch (NodeExistsException e) {
             try {
-                if (!checkEphemeralBelongToCurrentSession(path)) {
-                    deletePath(path);
-                    createEphemeral(path, data);
-                } else {
-                    client.setData().forPath(path, dataBytes);
-                }
+                client.setData().forPath(path, dataBytes);
             } catch (Exception e1) {
                 throw new IllegalStateException(e.getMessage(), e1);
             }
@@ -361,14 +347,5 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
      */
     CuratorFramework getClient() {
         return client;
-    }
-
-    private boolean checkEphemeralBelongToCurrentSession(String path) {
-        try{
-            Stat stat = client.checkExists().forPath(path);
-            return stat != null && stat.getEphemeralOwner() == client.getZookeeperClient().getZooKeeper().getSessionId();
-        } catch (Exception e) {
-            throw new IllegalStateException(e.getMessage(), e);
-        }
     }
 }
