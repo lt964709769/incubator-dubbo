@@ -32,7 +32,6 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
-import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.core.annotation.AnnotationAttributes;
 
 import java.lang.reflect.Field;
@@ -123,7 +122,6 @@ public class ReferenceAnnotationBeanPostProcessor extends AnnotationInjectedBean
     @Override
     protected Object doGetInjectedBean(AnnotationAttributes attributes, Object bean, String beanName, Class<?> injectedType,
                                        InjectionMetadata.InjectedElement injectedElement) throws Exception {
-
         /**
          * The name of bean that annotated Dubbo's {@link Service @Service} in local Spring {@link ApplicationContext}
          */
@@ -242,7 +240,11 @@ public class ReferenceAnnotationBeanPostProcessor extends AnnotationInjectedBean
         if (existsServiceBean(referencedBeanName)) { // If the local @Service Bean exists, build a proxy of ReferenceBean
             return newProxyInstance(getClassLoader(), new Class[]{serviceInterfaceType},
                     wrapInvocationHandler(referenceBeanName, referenceBean));
-        } else {                                    // ReferenceBean should be initialized and get immediately
+        } else { // ReferenceBean should be initialized and get immediately
+            /**
+             * TODO, if we can make sure this happens after {@link DubboLifecycleComponentApplicationListener},
+             * TODO, then we can avoid starting bootstrap in here, because bootstrap should has been started.
+             */
             return referenceBean.get();
         }
     }
@@ -347,8 +349,6 @@ public class ReferenceAnnotationBeanPostProcessor extends AnnotationInjectedBean
     public void onApplicationEvent(ApplicationEvent event) {
         if (event instanceof ServiceBeanExportedEvent) {
             onServiceBeanExportEvent((ServiceBeanExportedEvent) event);
-        } else if (event instanceof ContextRefreshedEvent) {
-            onContextRefreshedEvent((ContextRefreshedEvent) event);
         }
     }
 
@@ -365,10 +365,6 @@ public class ReferenceAnnotationBeanPostProcessor extends AnnotationInjectedBean
         if (handler != null) {
             handler.init();
         }
-    }
-
-    private void onContextRefreshedEvent(ContextRefreshedEvent event) {
-
     }
 
 
